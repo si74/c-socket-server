@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
    tv.tv_usec = 500000;
 
    int yes = 1;
-   int i, j, rv;
+   int i, rv;
 
    FD_ZERO(&readfds); // clear all entries from set
    FD_ZERO(&master);
@@ -47,20 +47,28 @@ int main(int argc, char *argv[]) {
    hints.ai_socktype = SOCK_STREAM; // TCP
    hints.ai_flags = AI_PASSIVE; // accepting connections
 
+   printf("listen for loop\n");
+   int j = 0;
    for (p = ai; p != NULL; p = p->ai_next) {
+      printf("listen for loop itr: %d\n", j++);
       listenfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+      printf("set listenfd\n");
       if (listenfd < 0) {
          continue;
       }
+      printf("listen for loop before setsockopt\n");
       setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+      printf("listen for loop after setsockopt\n");
       if (bind(listenfd, p->ai_addr, p->ai_addrlen) < 0) {
          close(listenfd);
 	 continue;
       }
+      printf("bind success");
       break;
    }   
    freeaddrinfo(ai);
 
+   printf("listening\n");
    // listen
    if (listen(listenfd, 10) == -1) {
       perror("listen");
@@ -71,6 +79,7 @@ int main(int argc, char *argv[]) {
 
    int fd_max = listenfd;
 
+   printf("select\n");
    readfds = master; // copy master set
    select(fd_max+1, &readfds, NULL, NULL, NULL); // pull ready fd
    for (int i = 0; i < fd_max; i++) {
