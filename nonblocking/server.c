@@ -11,8 +11,10 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <errno.h>
 
-const int PORT = 8080;
+#define PORT "8080"
+//const int PORT = 8080;
 const int STDIN = 0;
 
 int main(int argc, char *argv[]) {
@@ -34,6 +36,9 @@ int main(int argc, char *argv[]) {
    int yes = 1;
    int i, rv;
 
+   extern int errno;
+   int errnum;
+
    FD_ZERO(&readfds); // clear all entries from set
    FD_ZERO(&master);
    FD_SET(STDIN, &readfds); // add fd to the set 
@@ -47,31 +52,41 @@ int main(int argc, char *argv[]) {
    hints.ai_socktype = SOCK_STREAM; // TCP
    hints.ai_flags = AI_PASSIVE; // accepting connections
 
-   printf("listen for loop\n");
+   if ((rv = getaddrinfo(NULL, PORT, &hints, &ai)) != 0) {
+      fprintf(stderr, "selectserver: %s\n", gai_strerror(rv));
+      exit(1);
+   }
+
    int j = 0;
    for (p = ai; p != NULL; p = p->ai_next) {
       printf("listen for loop itr: %d\n", j++);
+      printf("p ai_family: %d\n", p->ai_family);
       listenfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
       printf("set listenfd\n");
       if (listenfd < 0) {
+	 errnum = errno;
+	 perror("socket error");
+         fprintf(stderr, "errno: %s\n", strerror(errnum));
          continue;
       }
-      printf("listen for loop before setsockopt\n");
       setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
-      printf("listen for loop after setsockopt\n");
       if (bind(listenfd, p->ai_addr, p->ai_addrlen) < 0) {
+	 errnum = errno;
+	 perror("bind error");
+	 fprintf(stderr, "errno: %s\n", strerror(errnum));
          close(listenfd);
 	 continue;
       }
-      printf("bind success");
+      printf("bind succeeded\n");
       break;
    }   
    freeaddrinfo(ai);
 
-   printf("listening\n");
    // listen
    if (listen(listenfd, 10) == -1) {
+      errnum = errno;
       perror("listen");
+      fprintf(stderr, "errno: %s\n", strerror(errnum));
       exit(3);
    }
 
@@ -93,7 +108,9 @@ int main(int argc, char *argv[]) {
       int addrlen = sizeof remoteaddr;
       newfd = accept(listenfd, (struct sockaddr*)&remoteaddr, &addrlen);
       if (newfd == -1) {
+	 errnum = errno;     
          perror("accept");
+	 fprintf(stderr, "errno: %s\n", strerror(errnum));
 	 continue;
       }
       FD_SET(newfd, &master); // add to master set
