@@ -95,34 +95,41 @@ int main(int argc, char *argv[]) {
    int fd_max = listenfd;
 
    printf("select\n");
-   readfds = master; // copy master set
-   select(fd_max+1, &readfds, NULL, NULL, NULL); // pull ready fd
-   for (int i = 0; i < fd_max; i++) {
-      printf("loop itr: %d\n", i);
-      if (!FD_ISSET(i, &readfds)) { 
-         continue;
-      }
-      if (i != listenfd) { // new listener
-         continue;
-      } // todo old listener
-      int addrlen = sizeof remoteaddr;
-      newfd = accept(listenfd, (struct sockaddr*)&remoteaddr, &addrlen);
-      if (newfd == -1) {
-	 errnum = errno;     
-         perror("accept");
-	 fprintf(stderr, "errno: %s\n", strerror(errnum));
-	 continue;
-      }
-      FD_SET(newfd, &master); // add to master set
-      if (newfd > fd_max) {
-         fd_max = newfd;
-      }
+   // main loop
+   for (;;) { 
+      readfds = master; // copy master set
+      // pull ready fd
+      if (select(fd_max+1, &readfds, NULL, NULL, NULL) == -1) {
+         errnum = errno;
+         perror("listen");
+         fprintf(stderr, "errno: %s\n", strerror(errnum));
+         exit(4); 
+      } 
+      for (int i = 0; i < fd_max; i++) {
+         printf("loop itr: %d\n", i);
+         if (FD_ISSET(i, &readfds)) {
+            printf("fd in readfds\n");
+	    if (i == listenfd) { // handle client (old listener)
+	       printf("reading data from client\n");
+	       // new listener
+	       printf("accept new listener\n");	 
+	       int addrlen = sizeof remoteaddr;
+               newfd = accept(listenfd, (struct sockaddr*)&remoteaddr, &addrlen);
+               if (newfd == -1) {
+                  errnum = errno;     
+                  perror("accept");
+                  fprintf(stderr, "errno: %s\n", strerror(errnum));
+                  continue;
+               }
+               FD_SET(newfd, &master); // add to master set
+               if (newfd > fd_max) {
+                  fd_max = newfd;
+               }
 
-//      printf("select server: new connection from %s on socket %d\n", 
-//		      inet_ntop(remoteaddr.ss_family, 
-//	              get_in_addr((struct sockaddr*)&remoteaddr), 
-//		      remoteIP, INET_ADDRSTRLEN), newfd);
+	    } 
+         }  
 
-   } // for 
+      } // select loop
+   } // main loop
    return 0;
 }
