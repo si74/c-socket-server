@@ -17,6 +17,13 @@
 //const int PORT = 8080;
 const int STDIN = 0;
 
+void* get_in_addr(struct sockaddr *sa) {
+   if (sa->sa_family == AF_INET) {
+      return &(((struct sockaddr_in*)sa)->sin_addr);
+   }
+   return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
 int main(int argc, char *argv[]) {
    int sockfd;
    struct timeval tv;
@@ -38,6 +45,10 @@ int main(int argc, char *argv[]) {
 
    extern int errno;
    int errnum;
+
+   // client data buffer
+   char buf[256];
+   int nbytes;
 
    FD_ZERO(&readfds); // clear all entries from set
    FD_ZERO(&master);
@@ -95,8 +106,16 @@ int main(int argc, char *argv[]) {
    int fd_max = listenfd;
 
    printf("select\n");
+
+   int counter = 0;
+
    // main loop
    for (;;) { 
+      if (counter == 10) {
+         break;
+      }
+      counter++;
+      printf("outer loop value: %d\n", counter);
       readfds = master; // copy master set
       // pull ready fd
       if (select(fd_max+1, &readfds, NULL, NULL, NULL) == -1) {
@@ -104,13 +123,14 @@ int main(int argc, char *argv[]) {
          perror("listen");
          fprintf(stderr, "errno: %s\n", strerror(errnum));
          exit(4); 
-      } 
-      for (int i = 0; i < fd_max; i++) {
+      }
+      // print readfds 
+      for (int i = 0; i <= fd_max; i++) {
          printf("loop itr: %d\n", i);
+	 // read data from listener
          if (FD_ISSET(i, &readfds)) {
             printf("fd in readfds\n");
-	    if (i == listenfd) { // handle client (old listener)
-	       printf("reading data from client\n");
+	    if (i == listenfd) {
 	       // new listener
 	       printf("accept new listener\n");	 
 	       int addrlen = sizeof remoteaddr;
@@ -119,16 +139,38 @@ int main(int argc, char *argv[]) {
                   errnum = errno;     
                   perror("accept");
                   fprintf(stderr, "errno: %s\n", strerror(errnum));
-                  continue;
+               } else {
+                  FD_SET(newfd, &master); // add to master set
+                  if (newfd > fd_max) {
+                     fd_max = newfd;
+                  }
+		  printf("select server: new connection from %s on socket %d\n", get_in_addr((struct sockaddr*)&remoteaddr), newfd);
                }
-               FD_SET(newfd, &master); // add to master set
-               if (newfd > fd_max) {
-                  fd_max = newfd;
-               }
-
-	    } 
-         }  
-
+	    } else { // i != listenfd
+	       // handle data from a client
+	       printf("i != listenfd\n");
+	       if ((nbytes = recv(i, buf, sizeof buf, 0)) <= 0) {
+	          if (nbytes == 0) {
+		     printf("selectserver: socket %d hung up \n", i);
+		  } else {
+		     perror("recv");
+		  }
+		  close(i);
+		  FD_CLR(i, &master); // rm from master set
+	       } else { // valid data from client
+		  int k;
+	          for (k = 0;  k <= fd_max; k++) {
+		     if (FD_ISSET(k, &master)) {
+		        if (k != listenfd && k != i) {
+			   if (send(k, buf, nbytes, 0) == -1) {
+			      perror("send");
+			   }
+			}
+		     }
+		  } // for loop
+	       }
+	    } // i != listenfd
+         } // FD_ISSET(i, &readfds)
       } // select loop
    } // main loop
    return 0;
