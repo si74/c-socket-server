@@ -14,7 +14,7 @@
 #include <errno.h>
 
 #define PORT "8080"
-//const int PORT = 8080;
+
 const int STDIN = 0;
 
 void* get_in_addr(struct sockaddr *sa) {
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
 
    FD_ZERO(&readfds); // clear all entries from set
    FD_ZERO(&master);
-   FD_SET(STDIN, &readfds); // add fd to the set 
+   FD_SET(STDIN, &readfds); // add fd to the set
 
    // listenfd
    struct addrinfo hints; // properties of listenfd
@@ -71,27 +71,25 @@ int main(int argc, char *argv[]) {
 
    int j = 0;
    for (p = ai; p != NULL; p = p->ai_next) {
-      printf("listen for loop itr: %d\n", j++);
-      printf("p ai_family: %d\n", p->ai_family);
       listenfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
-      printf("set listenfd\n");
       if (listenfd < 0) {
-	 errnum = errno;
-	 perror("socket error");
+         errnum = errno;
+	      perror("socket error");
          fprintf(stderr, "errno: %s\n", strerror(errnum));
          continue;
       }
+
       setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
       if (bind(listenfd, p->ai_addr, p->ai_addrlen) < 0) {
-	 errnum = errno;
-	 perror("bind error");
-	 fprintf(stderr, "errno: %s\n", strerror(errnum));
+	      errnum = errno;
+	      perror("bind error");
+	      fprintf(stderr, "errno: %s\n", strerror(errnum));
          close(listenfd);
-	 continue;
+	      continue;
       }
       printf("bind succeeded\n");
       break;
-   }   
+   }
    freeaddrinfo(ai);
 
    // listen
@@ -103,80 +101,75 @@ int main(int argc, char *argv[]) {
    }
 
    FD_SET(listenfd, &master); // add listener to master set
-
    int fd_max = listenfd;
-
-   printf("select\n");
-
    int counter = 0;
 
    // main loop
-   for (;;) { 
+   for (;;) {
       counter++;
-      printf("outer loop value: %d\n", counter);
       readfds = master; // copy master set
-      // pull ready fd
+      
+      // select waiting for a fd ready for reading
       if (select(fd_max+1, &readfds, NULL, NULL, NULL) == -1) {
          errnum = errno;
          perror("listen");
          fprintf(stderr, "errno: %s\n", strerror(errnum));
-         exit(4); 
+         exit(4);
       }
-      // print readfds 
+
+      // check the read
       for (int i = 0; i <= fd_max; i++) {
-         printf("loop itr: %d\n", i);
-	 // read data from listener
+	   // read data from listener
          if (FD_ISSET(i, &readfds)) {
-            printf("fd in readfds\n");
-	    if (i == listenfd) {
-	       // new listener
-	       printf("accept new listener\n");	 
-	       int addrlen = sizeof remoteaddr;
+           
+           // new incoming connection
+	         if (i == listenfd) {
+
+	            int addrlen = sizeof remoteaddr;
                newfd = accept(listenfd, (struct sockaddr*)&remoteaddr, &addrlen);
+               
                if (newfd == -1) {
-                  errnum = errno;     
+                  errnum = errno;
                   perror("accept");
                   fprintf(stderr, "errno: %s\n", strerror(errnum));
+
                } else {
                   FD_SET(newfd, &master); // add to master set
                   if (newfd > fd_max) {
                      fd_max = newfd;
                   }
-		  printf("select server: new connection from %s on socket %d\n", get_in_addr((struct sockaddr*)&remoteaddr), newfd);
+
+		            printf("select server: new connection from %s on socket %d\n", get_in_addr((struct sockaddr*)&remoteaddr), newfd);
                }
-	    } else { // i != listenfd
-	       char sendBuf[] = "hello world!";
-	       nbytes = strlen(sendBuf);
-	       printf("i != listenfd\n");
-	       if ((nbytes = recv(i, buf, sizeof buf, 0)) <= 0) {
-	          if (nbytes == 0) {
-	             printf("selectserver: socket %d hung up \n", i);
-	          } else {
-	             perror("recv");
-	          }
-	          close(i);
-	          FD_CLR(i, &master); // rm from master set
-	       } else { // valid data from client
-		  printf("value rcvd, %s\n", buf);
-	          int k;
-	          for (k = 0;  k <= fd_max; k++) {
-	             printf("entered send loop\n");
-	             if (FD_ISSET(k, &master)) {
-			printf("fd is set\n");
-	                if (k != listenfd && k != i) {
-			   printf("start sending sendBuf\n");
-	        	   if (send(k, sendBuf, nbytes, 0) == -1) {
-	        	      perror("send");
-	        	   }
-	        	} else {
-			   printf("k: %d, listenfd: %d, i: %d\n", k, listenfd, i);
-			}
-	             } 
-	          } // for loop
-	       }
-	    } // i != listenfd
-         } // FD_ISSET(i, &readfds)
-      } // select loop
-   } // main loop
+
+            // data ready to read from client and send back to client (i.e. i != listenfd)
+	         } else { 
+
+	            char sendBuf[] = "hello world!";
+	            nbytes = strlen(sendBuf);
+	            printf("i != listenfd\n");
+
+	            if ((nbytes = recv(i, buf, sizeof buf, 0)) <= 0) {
+	               if (nbytes == 0) {
+	                  printf("selectserver: socket %d hung up \n", i);
+	               } else {
+	                  perror("recv");
+	               }
+	               close(i);
+	               FD_CLR(i, &master); // rm from master set
+	       
+               } else { // valid data from client
+		  
+                  printf("value rcvd, %s\n", buf);
+
+	               if (send(i, "Hello, world!", 13, 0) == -1) {
+	        	         perror("send");
+	        	      }
+
+	            }
+	         } 
+         } 
+      } 
+   }
    return 0;
 }
