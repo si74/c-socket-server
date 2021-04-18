@@ -31,10 +31,12 @@ int main(int argc, char *argv[]) {
    printf("connected\n");
 
    while(1) {
+      printf("sendng message\n");
       if (send(sock, message, strlen(message), 0) < 0) {
          printf("send failed\n");
 	 return 1;
       }
+      printf("receiving message\n");
       if (recv(sock, server_reply, 2000, 0) < 0) {
          printf("recv failed\n");
 	 break;

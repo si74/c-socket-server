@@ -48,6 +48,7 @@ int main(int argc, char *argv[]) {
 
    // client data buffer
    char buf[256];
+
    int nbytes;
 
    FD_ZERO(&readfds); // clear all entries from set
@@ -111,9 +112,6 @@ int main(int argc, char *argv[]) {
 
    // main loop
    for (;;) { 
-      if (counter == 10) {
-         break;
-      }
       counter++;
       printf("outer loop value: %d\n", counter);
       readfds = master; // copy master set
@@ -147,27 +145,34 @@ int main(int argc, char *argv[]) {
 		  printf("select server: new connection from %s on socket %d\n", get_in_addr((struct sockaddr*)&remoteaddr), newfd);
                }
 	    } else { // i != listenfd
-	       // handle data from a client
+	       char sendBuf[] = "hello world!";
+	       nbytes = strlen(sendBuf);
 	       printf("i != listenfd\n");
 	       if ((nbytes = recv(i, buf, sizeof buf, 0)) <= 0) {
 	          if (nbytes == 0) {
-		     printf("selectserver: socket %d hung up \n", i);
-		  } else {
-		     perror("recv");
-		  }
-		  close(i);
-		  FD_CLR(i, &master); // rm from master set
+	             printf("selectserver: socket %d hung up \n", i);
+	          } else {
+	             perror("recv");
+	          }
+	          close(i);
+	          FD_CLR(i, &master); // rm from master set
 	       } else { // valid data from client
-		  int k;
+		  printf("value rcvd, %s\n", buf);
+	          int k;
 	          for (k = 0;  k <= fd_max; k++) {
-		     if (FD_ISSET(k, &master)) {
-		        if (k != listenfd && k != i) {
-			   if (send(k, buf, nbytes, 0) == -1) {
-			      perror("send");
-			   }
+	             printf("entered send loop\n");
+	             if (FD_ISSET(k, &master)) {
+			printf("fd is set\n");
+	                if (k != listenfd && k != i) {
+			   printf("start sending sendBuf\n");
+	        	   if (send(k, sendBuf, nbytes, 0) == -1) {
+	        	      perror("send");
+	        	   }
+	        	} else {
+			   printf("k: %d, listenfd: %d, i: %d\n", k, listenfd, i);
 			}
-		     }
-		  } // for loop
+	             } 
+	          } // for loop
 	       }
 	    } // i != listenfd
          } // FD_ISSET(i, &readfds)
