@@ -72,6 +72,7 @@ int main(int argc, char *argv[]) {
    int j = 0;
    for (p = ai; p != NULL; p = p->ai_next) {
       listenfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+      fcntl(listenfd, F_SETFL, O_NONBLOCK);
       if (listenfd < 0) {
          errnum = errno;
 	      perror("socket error");
@@ -119,15 +120,13 @@ int main(int argc, char *argv[]) {
 
       // check the read
       for (int i = 0; i <= fd_max; i++) {
-	   // read data from listener
+         // read data from listener
          if (FD_ISSET(i, &readfds)) {
-           
-           // new incoming connection
-	         if (i == listenfd) {
-
-	            int addrlen = sizeof remoteaddr;
+            // new incoming connection
+            if (i == listenfd) {
+               int addrlen = sizeof remoteaddr;
                newfd = accept(listenfd, (struct sockaddr*)&remoteaddr, &addrlen);
-               
+               fcntl(newfd, F_SETFL, O_NONBLOCK); // nonblocking socket
                if (newfd == -1) {
                   errnum = errno;
                   perror("accept");
