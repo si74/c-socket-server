@@ -13,10 +13,8 @@ There are several elements here for design of the socket server and client.
 
 ## // TODO:
 
-1. Write small go client to test out non-blocking server code to make sure it works
-2. Work on nonblocking client based on notes [here](https://docs.google.com/document/d/1qY5_2XeZ2iy2S0uSzuXAz2PiB0bX04LBR3LXjnLyA2w/edit)
-3. Change all code to incorporate proper C style (Gnu style: https://man.openbsd.org/style.9, OpenBSD style, Linux style)
-4. Start on port scanning code
+1. Change all code to incorporate proper C style (Gnu style: https://man.openbsd.org/style.9, OpenBSD style, Linux style)
+2. Start on port scanning code
 
 ## Sources
 

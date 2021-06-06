@@ -36,6 +36,10 @@ int main(int argc, char *argv[]) {
    int newfd;
    struct sockaddr_storage remoteaddr;
 
+   // relevant metrics being tracked
+   int total_messages_received; 
+   int total_messages_sent;
+
    // select will block for 2.5s
    tv.tv_sec = 2;
    tv.tv_usec = 500000;
@@ -72,7 +76,7 @@ int main(int argc, char *argv[]) {
    int j = 0;
    for (p = ai; p != NULL; p = p->ai_next) {
       listenfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
-      fcntl(listenfd, F_SETFL, O_NONBLOCK);
+      fcntl(listenfd, F_SETFL, O_NONBLOCK); //setting to be non-blocking
       if (listenfd < 0) {
          errnum = errno;
 	      perror("socket error");
@@ -159,12 +163,18 @@ int main(int argc, char *argv[]) {
 	       
                } else { // valid data from client
 		  
+                  total_messages_received++;
                   printf("value rcvd, %s\n", buf);
 
 	               if (send(i, "Hello, world!", 13, 0) == -1) {
 	        	         perror("send");
 	        	      }
 
+                  total_messages_sent++;
+                  printf("successfully sent\n");
+
+                  printf("total_messages_received: %d\n", total_messages_received);
+                  printf("total_messages_sent: %d\n", total_messages_sent);
 	            }
 	         } 
          } 
