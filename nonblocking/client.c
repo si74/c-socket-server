@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
    int status;
    struct sockaddr_in server;
    char server_reply[2000];
-   fd_set master, readfds;
+   fd_set master, writefds, readfds;
 
    char message[1000] = "Hi";
 
@@ -52,16 +52,42 @@ int main(int argc, char *argv[]) {
    }
    printf("connected\n");
 
-   // TODO(sneha): Add to fd set
+   // add to fd set
    FD_SET(sock, &master);
    int fd_max = sock;
    int counter = 0;
-   // TODO(sneha: Do select in loop to see if socket is connected/ready
+
+   // check for writes
    for (;;) {
-      if (counter < 10)
-         printf("in loop %d\n", counter);
       counter++;
-      readfds = master; // copy master set
+      writefds = master; // copy master set
+      readfds = master;
+      if (select(fd_max+1, NULL, &writefds, NULL, NULL) == -1) {
+         errnum = errno;
+         perror("listen");
+         fprintf(stderr, "errno: %s\n", strerror(errnum));
+         exit(4);
+      }
+
+      // write to sock in write set 
+      if (FD_ISSET(sock, &writefds)) {
+         break; 
+      }
+   }
+
+   // send message to server
+   char* msg = "Hello, world from client!\n";
+   int len = strlen(msg);
+   if (send(sock, msg, len, -1) == -1) {
+      perror("send");
+   }
+
+   // check for reads
+   counter = 0;
+   for (;;) {
+      counter++;
+      writefds = master; // copy master set
+      readfds = master; 
 
       if (select(fd_max+1, &readfds, NULL, NULL, NULL) == -1) {
          errnum = errno;
@@ -69,38 +95,23 @@ int main(int argc, char *argv[]) {
          fprintf(stderr, "errno: %s\n", strerror(errnum));
          exit(4);
       }
-      printf("select isnt blocking\n"); 
-      // when fd ready, check sockopt for errors
+
+      // read from sock in read set
       if (FD_ISSET(sock, &readfds)) {
-         printf("sock is in readfds\n");
          break;
-      }
-      if (counter < 10)
-         printf("not ready\n");
+               } 
    }
 
-   // send message
-   if (send(sock, "Hello, world!", 13, 0) == -1) {
-      perror("send");
-   }
-
-
-   printf("sendng message\n");
-   if (send(sock, message, strlen(message), 0) < 0) {
-      printf("send failed\n");
-      return 1;
-   }
-
-   printf("receiving message\n");
+   // read reply from server
    if (recv(sock, server_reply, 2000, 0) < 0) {
       printf("recv failed\n");
       return 1;
    }
-
    printf("Server reply: %s\n", server_reply);
    close(sock);
    return 0;
-}
+ 
+} // main()
 
 // connect is blocking
 // set socket to non blocking

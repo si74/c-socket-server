@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
                      fd_max = newfd;
                   }
 
-		            printf("select server: new connection from %s on socket %d\n", get_in_addr((struct sockaddr*)&remoteaddr), newfd);
+		  printf("select server: new connection from %s on socket %d\n", get_in_addr((struct sockaddr*)&remoteaddr), newfd);
                }
 
             // data ready to read from client and send back to client (i.e. i != listenfd)
@@ -165,8 +165,9 @@ int main(int argc, char *argv[]) {
 		  
                   total_messages_received++;
                   printf("value rcvd, %s\n", buf);
-
-	               if (send(i, "Hello, world!", 13, 0) == -1) {
+                  char* msg = "Hello, world from server!\n";
+                  int len = strlen(msg);
+	               if (send(i, msg, len, 0) == -1) {
 	        	         perror("send");
 	        	      }
 
