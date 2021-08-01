@@ -15,6 +15,7 @@ int main(int argc, char *argv[]) {
    int status;
    struct sockaddr_in server;
    char server_reply[2000];
+   fd_set master, readfds;
 
    char message[1000] = "Hi";
 
@@ -43,18 +44,46 @@ int main(int argc, char *argv[]) {
       errnum = errno;
       // TODO(sneha): check type of error - i.e. in progress and continue if that is the case
       if (errno == EINPROGRESS) {
-        printf("operation still in progress. continuing...");
+         printf("operation still in progress. continuing...");
+      } else {
+         perror("connect failed\n");
+         return 1;
       }
-      perror("connect failed\n");
-      return 1;
    }
    printf("connected\n");
 
    // TODO(sneha): Add to fd set
-
+   FD_SET(sock, &master);
+   int fd_max = sock;
+   int counter = 0;
    // TODO(sneha: Do select in loop to see if socket is connected/ready
-   // when fd ready, check sockopt for errors
+   for (;;) {
+      if (counter < 10)
+         printf("in loop %d\n", counter);
+      counter++;
+      readfds = master; // copy master set
+
+      if (select(fd_max+1, &readfds, NULL, NULL, NULL) == -1) {
+         errnum = errno;
+         perror("listen");
+         fprintf(stderr, "errno: %s\n", strerror(errnum));
+         exit(4);
+      }
+      printf("select isnt blocking\n"); 
+      // when fd ready, check sockopt for errors
+      if (FD_ISSET(sock, &readfds)) {
+         printf("sock is in readfds\n");
+         break;
+      }
+      if (counter < 10)
+         printf("not ready\n");
+   }
+
    // send message
+   if (send(sock, "Hello, world!", 13, 0) == -1) {
+      perror("send");
+   }
+
 
    printf("sendng message\n");
    if (send(sock, message, strlen(message), 0) < 0) {
