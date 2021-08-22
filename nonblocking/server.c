@@ -37,8 +37,8 @@ int main(int argc, char *argv[]) {
    struct sockaddr_storage remoteaddr;
 
    // relevant metrics being tracked
-   int total_messages_received; 
-   int total_messages_sent;
+   int total_messages_received = 0; 
+   int total_messages_sent = 0;
 
    // select will block for 2.5s
    tv.tv_sec = 2;
@@ -141,14 +141,12 @@ int main(int argc, char *argv[]) {
                   if (newfd > fd_max) {
                      fd_max = newfd;
                   }
-
-		  printf("select server: new connection from %s on socket %d\n", get_in_addr((struct sockaddr*)&remoteaddr), newfd);
+                  printf("select server: new connection from %s on socket %d\n", get_in_addr((struct sockaddr*)&remoteaddr), newfd);
                }
 
             // data ready to read from client and send back to client (i.e. i != listenfd)
-	         } else { 
-
-	            char sendBuf[] = "hello world!";
+            } else { // i != listenfd
+               char sendBuf[] = "hello world!";
 	            nbytes = strlen(sendBuf);
 	            printf("i != listenfd\n");
 
@@ -160,20 +158,19 @@ int main(int argc, char *argv[]) {
 	               }
 	               close(i);
 	               FD_CLR(i, &master); // rm from master set
-	       
+	            
                } else { // valid data from client
-		  
+	               
                   total_messages_received++;
                   printf("value rcvd, %s\n", buf);
                   char* msg = "Hello, world from server!\n";
                   int len = strlen(msg);
-	               if (send(i, msg, len, 0) == -1) {
-	        	         perror("send");
-	        	      }
-
+                  if (send(i, msg, len, 0) == -1) {
+                     perror("send");
+                  }
+                  
                   total_messages_sent++;
                   printf("successfully sent\n");
-
                   printf("total_messages_received: %d\n", total_messages_received);
                   printf("total_messages_sent: %d\n", total_messages_sent);
 	            }

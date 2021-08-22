@@ -17,8 +17,6 @@ int main(int argc, char *argv[]) {
    char server_reply[2000];
    fd_set master, writefds, readfds;
 
-   char message[1000] = "Hi";
-
 // TODO(sneha): create parent fd set
 
    // For some reason SOCKSTREAM | O_NONBLOCK doesn't work
@@ -103,19 +101,15 @@ int main(int argc, char *argv[]) {
    }
 
    // read reply from server
-   if (recv(sock, server_reply, 2000, 0) < 0) {
+   int recv_len = recv(sock, server_reply, 2000, 0);
+   if (recv_len < 0) {
       printf("recv failed\n");
       return 1;
    }
    printf("Server reply: %s\n", server_reply);
+   printf("Reply len: %d\n", recv_len);
    close(sock);
    return 0;
  
 } // main()
 
-// connect is blocking
-// set socket to non blocking
-// add fd to master
-// connect
-// blocking select in for loop
-// when fd is ready, check sockopt for errors
