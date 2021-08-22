@@ -1,14 +1,14 @@
-#include <stdio.h>
-#include <string.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <unistd.h>
-#include <fcntl.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 
 const int PORT = 8080;
 
-int main(int argc, char *argv[]) {
+int main() {
    extern int errno;
    int errnum;
    int sock;
@@ -17,11 +17,11 @@ int main(int argc, char *argv[]) {
    char server_reply[2000];
    fd_set master, writefds, readfds;
 
-// TODO(sneha): create parent fd set
-
-   // For some reason SOCKSTREAM | O_NONBLOCK doesn't work
-   // despite what the man page says (https://man7.org/linux/man-pages/man2/socket.2.html).
-   // Hence, using fcntl() instead.
+   /* 
+    * For some reason SOCKSTREAM | O_NONBLOCK doesn't work
+    * despite what the man page says (https://man7.org/linux/man-pages/man2/socket.2.html).
+    * Hence, using fcntl() instead.
+    */
    sock = socket(AF_INET, SOCK_STREAM, 0);
    if (sock == -1) {
      perror("socket error");

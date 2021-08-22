@@ -17,18 +17,23 @@
 
 const int STDIN = 0;
 
-void* get_in_addr(struct sockaddr *sa) {
+char* get_in_addr(struct sockaddr *sa) {
    if (sa->sa_family == AF_INET) {
-      return &(((struct sockaddr_in*)sa)->sin_addr);
+      char* ip4 = malloc(INET_ADDRSTRLEN);
+      inet_ntop(AF_INET, &(((struct sockaddr_in*)sa)->sin_addr), ip4, INET_ADDRSTRLEN);
+      return ip4;
    }
-   return &(((struct sockaddr_in6*)sa)->sin6_addr);
+   char* ip6 = malloc(INET6_ADDRSTRLEN);
+   inet_ntop(AF_INET6, &(((struct sockaddr_in6*)sa)->sin6_addr), ip6, INET6_ADDRSTRLEN);
+   return ip6;
 }
 
-int main(int argc, char *argv[]) {
+int main() {
    int sockfd;
    struct timeval tv;
    struct sockaddr_in server;
    char server_reply[2000];
+   char* ret_ip_addr;
 
    fd_set readfds;
    fd_set master;
@@ -141,7 +146,8 @@ int main(int argc, char *argv[]) {
                   if (newfd > fd_max) {
                      fd_max = newfd;
                   }
-                  printf("select server: new connection from %s on socket %d\n", get_in_addr((struct sockaddr*)&remoteaddr), newfd);
+                  ret_ip_addr = get_in_addr((struct sockaddr*)&remoteaddr);
+                  printf("select server: new connection from %s on socket %d\n", ret_ip_addr, newfd);
                }
 
             // data ready to read from client and send back to client (i.e. i != listenfd)
@@ -178,5 +184,7 @@ int main(int argc, char *argv[]) {
          } 
       } 
    }
+
+   free(ret_ip_addr);
    return 0;
 }
