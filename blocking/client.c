@@ -7,6 +7,8 @@
 const int PORT = 8080;
 
 int main(int argc, char *argv[]) {
+   extern int errno;
+   int errnum;
    int sock;
    struct sockaddr_in server;
    char server_reply[2000];
@@ -25,6 +27,8 @@ int main(int argc, char *argv[]) {
    server.sin_port = htons(PORT);
 
    if (connect (sock, (struct sockaddr*)&server, sizeof(server)) < 0) {
+      errnum = errno;
+      printf("%d\n", errnum);
       perror("connect failed. error\n");
       return 1;
    }
@@ -35,7 +39,7 @@ int main(int argc, char *argv[]) {
       printf("send failed\n");
       return 1;
    }
-   
+
    printf("receiving message\n");
    if (recv(sock, server_reply, 2000, 0) < 0) {
       printf("recv failed\n");
